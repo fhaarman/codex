@@ -10,8 +10,10 @@ function loader(element) {
   element.textContent = '';
 
   loadInterval = setInterval(() => {
+    // Update the text content of the loading indicator
     element.textContent += '.';
 
+    // If the loading indicator has reached three dots, reset it
     if (element.textContent === '....') {
       element.textContent = '';
     }
@@ -21,16 +23,19 @@ function loader(element) {
 function typeText(element, text) {
   let index = 0;
 
-  let interval = setInterval (() => {
-    if(index < text.length) {
+  let interval = setInterval(() => {
+    if (index < text.length) {
       element.innerHTML += text.charAt(index);
       index++;
     } else {
       clearInterval(interval);
     }
-  }, 20)
+  }, 20);
 }
 
+// generate unique ID for each message div of bot
+// necessary for typing text effect for that specific reply
+// without unique ID, typing text will work on every element
 function generateUniqueId() {
   const timestamp = Date.now();
   const randomNumber = Math.random();
@@ -40,22 +45,30 @@ function generateUniqueId() {
 }
 
 function chatStripe(isAi, value, uniqueId) {
-  return (
-      `
-      <div class="wrapper ${isAi && 'ai'}">
-          <div class="chat">
-              <div class="profile">
-                  <img 
-                    src=${isAi ? bot : user} 
-                    alt="${isAi ? 'bot' : 'user'}" 
-                  />
-              </div>
-              <div class="message" id=${uniqueId}>${value}</div>
-          </div>
+  return `
+    <div class="wrapper ${isAi && 'ai'}">
+      <div class="chat">
+        <div class="profile">
+          <img src=${isAi ? bot : user} alt="${isAi ? 'bot' : 'user'}" />
+        </div>
+        <div class="message" id=${uniqueId}>${value}</div>
       </div>
-      
-      `
-  )
+    </div>
+  `;
+}
+
+const synth = window.speechSynthesis;
+
+function speak(text) {
+  // Create a new SpeechSynthesisUtterance object
+  const utterance = new SpeechSynthesisUtterance();
+
+  // Set the text and voice properties of the utterance
+  utterance.text = text;
+  utterance.voice = synth.getVoices()[0]; // choose the first available voice
+
+  // Queue the utterance for speaking
+  synth.speak(utterance);
 }
 
 const handleSubmit = async (e) => {
@@ -66,74 +79,72 @@ const handleSubmit = async (e) => {
   // user's chatstripe
   chatContainer.innerHTML += chatStripe(false, data.get('prompt'));
 
-  // to clear the textarea input 
+  // to clear the textarea input
   form.reset();
 
   // bot's chatstripe
   const uniqueId = generateUniqueId();
-  chatContainer.innerHTML += chatStripe(true, " ", uniqueId);
+  chatContainer.innerHTML += chatStripe(true, ' ', uniqueId);
 
-  // to focus scroll to the bottom 
+  // to focus scroll to the bottom
   chatContainer.scrollTop = chatContainer.scrollHeight;
 
-  // specific message div 
+  // specific message div
+  const messageDiv = document.getElement
+const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  const data = new FormData(form);
+
+  // user's chatstripe
+  chatContainer.innerHTML += chatStripe(false, data.get('prompt'));
+
+  // to clear the textarea input
+  form.reset();
+
+  // bot's chatstripe
+  const uniqueId = generateUniqueId();
+  chatContainer.innerHTML += chatStripe(true, ' ', uniqueId);
+
+  // to focus scroll to the bottom
+  chatContainer.scrollTop = chatContainer.scrollHeight;
+
+  // specific message div
   const messageDiv = document.getElementById(uniqueId);
 
   // messageDiv.innerHTML = "..."
   loader(messageDiv);
 
-const response = await fetch('https://codex-thse.onrender.com/', {
-  method: 'POST',
-  headers: {
-      'Content-Type': 'application/json'
-  },
-  body: JSON.stringify({
-      prompt: data.get('prompt')
-  })
-})
+  const response = await fetch('https://codex-im0y.onrender.com/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      prompt: data.get('prompt'),
+    }),
+  });
 
-clearInterval(loadInterval)
-messageDiv.innerHTML = " "
+  clearInterval(loadInterval);
+  messageDiv.innerHTML = ' ';
 
-if (response.ok) {
+  if (response.ok) {
     const data = await response.json();
-    const parsedData = data.bot.trim(); // trims any trailing spaces/'\n' 
+    const parsedData = data.bot.trim(); // trims any trailing spaces/'\n'
 
     typeText(messageDiv, parsedData);
-} else {
+    speak(parsedData); // speak the bot's response
+  } else {
     const err = await response.text();
 
-    messageDiv.innerHTML = "Something went wrong"
+    messageDiv.innerHTML = 'Something went wrong';
     alert(err);
-}
-}
+  }
+};
 
-form.addEventListener('submit', handleSubmit)
+form.addEventListener('submit', handleSubmit);
 form.addEventListener('keyup', (e) => {
-    if (e.keyCode === 13) {
-        handleSubmit(e)
-    }
+  if (e.keyCode === 13) {
+    handleSubmit(e);
+  }
 });
-
-// Add voice input using the Web Speech API
-if (window.SpeechRecognition || window.webkitSpeechRecognition) {
-  const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-  recognition.lang = 'en-US';
-
-  const voiceInputBtn = document.querySelector('#voice_input_btn');
-  voiceInputBtn.style.display = 'inline-block';
-
-  voiceInputBtn.addEventListener('click', () => {
-    recognition.start();
-  });
-
-  recognition.addEventListener('result', (e) => {
-    const transcript = Array.from(e.results)
-      .map(result => result[0])
-      .map(result => result.transcript)
-      .join('');
-
-    form.querySelector('textarea').value = transcript;
-    handleSubmit(new Event('submit'));
-  });
-}
