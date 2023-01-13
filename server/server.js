@@ -1,48 +1,37 @@
-import express from 'express'
-import * as dotenv from 'dotenv'
-import cors from 'cors'
-import { Configuration, OpenAIApi } from 'openai'
+from dotenv import load_dotenv
+from random import choice
+from flask import Flask, request
+import os
+import openai
 
-dotenv.config()
+load_dotenv()
+openai.api_key = os.environ.get('OPENAI_KEY')
+completion = openai.Completion()
 
-const configuration = new Configuration({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+start_sequence = "\nVriend:"
+restart_sequence = "\n\nPerson:"
+session_prompt = "Je praat met een vriend die bekend staat om zijn gevoel voor humor en gekke capriolen. Ze maken altijd grappen en maken mensen aan het lachen. Je kunt ze om advies vragen over hoe je een situatie kunt verlichten of om een goede mop te vertellen.\n\nPersoon: Wie ben jij?\nVriend: Ik ben een vriend die altijd in is voor een goede lach en om mensen aan het lachen te maken. Hoe kan ik jouw dag opfleuren?\n\nPersoon: Hoe lijk jij altijd de perfecte grap te weten te vertellen?\nVriend: Ik heb een talent voor het vinden van de humor in elke situatie, en ik heb altijd een grap of woordspeling klaar om te gebruiken.\n\nPersoon: Kun je me advies geven over hoe ik een gespannen vergadering kan verlichten?\nVriend: Zeker! Een goede manier om een gespannen vergadering op te fleuren, is door een beetje humor in het gesprek te brengen. Je kunt een grappige grap of een geestige woordspeling vertellen, of zelfs een luchtige opmerking over de situatie maken. Het kan helpen om de spanning te verminderen en ervoor te zorgen dat iedereen zich meer ontspannen voelt.\n\nPersoon: Kun je me een grap vertellen?\nVriend: Zeker! Waarom was het wiskundeboek verdrietig? Omdat het te veel problemen had.\n\nPersoon: Wat vind je het leukst aan dom zijn?\nVriend: Wat ik zo leuk vind aan gek zijn, is de manier waarop het mensen bij elkaar kan brengen en een gevoel van kameraadschap kan creëren. Het is ook een geweldige manier om stress te verlichten en plezier te hebben.\n\nPersoon:"
 
-const openai = new OpenAIApi(configuration);
+app = Flask(name)
 
-const app = express()
-app.use(cors())
-app.use(express.json())
+@app.route("/")
+def home():
+return "Welcome to the chatbot API!"
 
-app.get('/', async (req, res) => {
-  res.status(200).send({
-    message: 'Hello from CodeX!'
-  })
-})
+@app.route("/ask", methods=["GET", "POST"])
+def ask_question():
+question = request.args.get("question")
+chat_log = request.args.get("chat_log")
+answer = ask(question, chat_log)
+return answer
 
-app.post('/', async (req, res) => {
-  try {
-    const prompt = req.body.prompt;
+@app.route("/log", methods=["POST"])
+def log_interaction():
+question = request.form["question"]
+answer = request.form["answer"]
+chat_log = request.form["chat_log"]
+new_chat_log = append_interaction_to_chat_log(question, answer, chat_log)
+return new_chat_log
 
-    const response = await openai.createCompletion({
-      model: "text-davinci-003",
-      prompt: `${prompt}`,
-      temperature: 0.9, // Higher values means the model will take more risks.
-      max_tokens: 150, // The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 4096).
-      top_p: 1, // alternative to sampling with temperature, called nucleus sampling
-      frequency_penalty: 0, // Number between -2.0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim.
-      presence_penalty: 0.6, // Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they appear in the text so far, increasing the model's likelihood to talk about new topics.
-    });
-
-    res.status(200).send({
-      bot: response.data.choices[0].text
-    });
-
-  } catch (error) {
-    console.error(error)
-    res.status(500).send(error || 'Something went wrong');
-  }
-})
-
-app.listen(5000, () => console.log('AI server started on https://codex-thse.onrender.com'))
+if name == "main":
+app.run(debug=True)
